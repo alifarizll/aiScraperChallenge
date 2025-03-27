@@ -1,23 +1,9 @@
+const http = require("http");
 const puppeteer = require("puppeteer");
-const axios = require("axios");
-const cheerio = require("cheerio");
+const url = require("url");
 
-async function getProductDescription(url) {
-    try {
-        const { data } = await axios.get(url);
-        const $ = cheerio.load(data);
-
-        let description = $("#viTabs_0_is").text().trim();
-        if (!description) description = "-";
-
-        return description;
-    } catch (error) {
-        console.error("Error fetching product description:", error.message);
-        return "-";
-    }
-}
-
-async function scrapeEbay() {
+// Fungsi scraping utama
+async function scrapeEbay(query, maxPages = 2) {
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
 
@@ -25,11 +11,11 @@ async function scrapeEbay() {
     let currentPage = 1;
     let hasNextPage = true;
 
-    while (hasNextPage) {
-        const url = `https://www.ebay.com/sch/i.html?_from=R40&_nkw=nike&_sacat=0&rt=nc&_pgn=${currentPage}`;
-        console.log(`Scraping page ${currentPage}...`);
+    while (hasNextPage && currentPage <= maxPages) {
+        const ebayUrl = `https://www.ebay.com/sch/i.html?_nkw=${query}&_sacat=0&_pgn=${currentPage}`;
+        console.log(`Scraping page ${currentPage} for: ${query}`);
 
-        await page.goto(url, { waitUntil: "domcontentloaded" });
+        await page.goto(ebayUrl, { waitUntil: "domcontentloaded" });
 
         const products = await page.evaluate(() => {
             let items = [];
@@ -38,7 +24,7 @@ async function scrapeEbay() {
                 let price = item.querySelector(".s-item__price")?.innerText || "-";
                 let link = item.querySelector(".s-item__link")?.href || "-";
 
-                if (title !== "-") {
+                if (title !== "-" && link !== "-") {
                     items.push({ title, price, link });
                 }
             });
@@ -46,15 +32,12 @@ async function scrapeEbay() {
         });
 
         for (let product of products) {
-            if (product.link !== "-") {
-                product.description = await getProductDescription(product.link);
-            } else {
-                product.description = "-";
-            }
+            product.description = await scrapeDescription(browser, product.link);
         }
 
         allProducts.push(...products);
 
+        // Cek apakah ada halaman berikutnya
         hasNextPage = await page.evaluate(() => {
             let nextButton = document.querySelector(".pagination__next");
             return nextButton && !nextButton.classList.contains("pagination__next--disabled");
@@ -64,8 +47,55 @@ async function scrapeEbay() {
     }
 
     await browser.close();
-
-    console.log(JSON.stringify(allProducts, null, 2));
+    return allProducts;
 }
 
-scrapeEbay();
+// Fungsi scraping deskripsi dari halaman produk
+async function scrapeDescription(browser, productUrl) {
+    const page = await browser.newPage();
+
+    try {
+        await page.goto(productUrl, { waitUntil: "domcontentloaded" });
+
+        let description = await page.evaluate(() => {
+            return document.querySelector("#viTabs_0_is")?.innerText ||
+                   document.querySelector(".item-desc")?.innerText ||
+                   "-";
+        });
+
+        await page.close();
+        return description;
+    } catch (error) {
+        console.error(`Gagal mengambil deskripsi dari: ${productUrl}`);
+        await page.close();
+        return "-";
+    }
+}
+
+// Membuat server tanpa Express
+const server = http.createServer(async (req, res) => {
+    const parsedUrl = url.parse(req.url, true);
+
+    if (parsedUrl.pathname === "/api/scrape") {
+        const query = parsedUrl.query.q || "nike"; // Default pencarian "nike"
+        const maxPages = parseInt(parsedUrl.query.pages) || 2; // Default 2 halaman
+
+        try {
+            const products = await scrapeEbay(query, maxPages);
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ success: true, data: products }));
+        } catch (error) {
+            res.writeHead(500, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ success: false, message: "Error scraping eBay", error: error.message }));
+        }
+    } else {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: false, message: "Endpoint not found" }));
+    }
+});
+
+// Menjalankan server di port 3000
+const PORT = 3000;
+server.listen(PORT, () => {
+    console.log(`Server berjalan di http://localhost:${PORT}`);
+});
