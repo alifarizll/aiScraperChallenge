@@ -2,7 +2,6 @@ const http = require("http");
 const puppeteer = require("puppeteer");
 const url = require("url");
 
-// Fungsi scraping utama
 async function scrapeEbay(query, maxPages = 2) {
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
@@ -37,7 +36,6 @@ async function scrapeEbay(query, maxPages = 2) {
 
         allProducts.push(...products);
 
-        // Cek apakah ada halaman berikutnya
         hasNextPage = await page.evaluate(() => {
             let nextButton = document.querySelector(".pagination__next");
             return nextButton && !nextButton.classList.contains("pagination__next--disabled");
@@ -50,7 +48,6 @@ async function scrapeEbay(query, maxPages = 2) {
     return allProducts;
 }
 
-// Fungsi scraping deskripsi dari halaman produk
 async function scrapeDescription(browser, productUrl) {
     const page = await browser.newPage();
 
@@ -59,8 +56,8 @@ async function scrapeDescription(browser, productUrl) {
 
         let description = await page.evaluate(() => {
             return document.querySelector("#viTabs_0_is")?.innerText ||
-                   document.querySelector(".item-desc")?.innerText ||
-                   "-";
+                document.querySelector(".item-desc")?.innerText ||
+                "-";
         });
 
         await page.close();
@@ -72,13 +69,12 @@ async function scrapeDescription(browser, productUrl) {
     }
 }
 
-// Membuat server tanpa Express
 const server = http.createServer(async (req, res) => {
     const parsedUrl = url.parse(req.url, true);
 
     if (parsedUrl.pathname === "/api/scrape") {
-        const query = parsedUrl.query.q || "nike"; // Default pencarian "nike"
-        const maxPages = parseInt(parsedUrl.query.pages) || 2; // Default 2 halaman
+        const query = parsedUrl.query.q || "nike"; // Default query "nike"
+        const maxPages = parseInt(parsedUrl.query.pages) || 2; // Default 2 pages
 
         try {
             const products = await scrapeEbay(query, maxPages);
@@ -94,7 +90,6 @@ const server = http.createServer(async (req, res) => {
     }
 });
 
-// Menjalankan server di port 3000
 const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Server berjalan di http://localhost:${PORT}`);
