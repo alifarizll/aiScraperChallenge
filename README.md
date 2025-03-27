@@ -4,6 +4,7 @@ This project is aimed at completing the Ai Scraper Challenge.
 To run this project, you can follow the code below 
 
 npm install
+
 node product.js
 
 server will running on "http://localhost:3000"
