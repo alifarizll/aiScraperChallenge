@@ -10,6 +10,16 @@ async function scrapeEbay(query, maxPages = 2) {
     let currentPage = 1;
     let hasNextPage = true;
 
+    function chunkArray(arr, size) {
+        const result = [];
+        for (let i = 0; i < arr.length; i += size) {
+            result.push(arr.slice(i, i + size));
+        }
+        return result;
+    }
+
+    const MAX_CONCURRENT = 5; // Maximum tab paralel
+
     while (hasNextPage && currentPage <= maxPages) {
         const ebayUrl = `https://www.ebay.com/sch/i.html?_nkw=${query}&_sacat=0&_pgn=${currentPage}`;
         console.log(`Scraping page ${currentPage} for: ${query}`);
@@ -30,8 +40,14 @@ async function scrapeEbay(query, maxPages = 2) {
             return items;
         });
 
-        for (let product of products) {
-            product.description = await scrapeDescription(browser, product.link);
+        const productBatches = chunkArray(products, MAX_CONCURRENT);
+
+        for (const batch of productBatches) {
+            await Promise.allSettled(
+                batch.map(async (product) => {
+                    product.description = await scrapeDescription(browser, product.link);
+                })
+            );
         }
 
         allProducts.push(...products);
@@ -47,6 +63,7 @@ async function scrapeEbay(query, maxPages = 2) {
     await browser.close();
     return allProducts;
 }
+
 
 async function scrapeDescription(browser, productUrl) {
     const page = await browser.newPage();
@@ -79,7 +96,13 @@ const server = http.createServer(async (req, res) => {
         try {
             const products = await scrapeEbay(query, maxPages);
             res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: true, data: products }));
+            const cleanProducts = products.map(p => ({
+                Name: p.title,
+                Price: p.price,
+                Description: p.description
+            }));
+            res.end(JSON.stringify({ success: true, data: cleanProducts }));
+
         } catch (error) {
             res.writeHead(500, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ success: false, message: "Error scraping eBay", error: error.message }));
@@ -94,3 +117,4 @@ const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Server berjalan di http://localhost:${PORT}`);
 });
+
