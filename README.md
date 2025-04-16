@@ -1,23 +1,24 @@
-#aiScraperChallenge
+# aiScraperChallenge
 
-A lightweight web scraping API using Node.js and Puppeteer, designed to extract product data from eBay listings.
+A lightweight web scraping API using Node.js and Puppeteer, designed to extract product data from eBay listings. This project is aimed at completing the Ai Scraper Challenge.
 
-This project is aimed at completing the Ai Scraper Challenge.
+## 🛠 Requirements
 
-🛠 Requirements
+`-` Node.js v18+
 
-Node.js v18+
+`-` Internet connection (for live scraping)
 
-Internet connection (for live scraping)
+## 🚀 Getting Started
 
-🚀 Getting Started
-
+### Installation
 To run this project, you can follow the code below 
-
+```javascript
 npm install
 
 node product.js
+```
 
+### Usage
 server will running on "http://localhost:3000"
 
 To see the scraped item, we can use postman or hoppscotch with the url below: 
@@ -31,8 +32,9 @@ pages=[how much page you want to see] // for example 4
 
 wait for a while, and the product list will appear in json format.
 
+### Example
 example response : 
-
+```javascript
 {
   "success": true,
   "data": [
@@ -48,3 +50,4 @@ example response :
     }
   ]
 }
+```
