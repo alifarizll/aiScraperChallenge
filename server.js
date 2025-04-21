@@ -10,13 +10,12 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// Fungsi untuk mengambil deskripsi produk dari halaman detail
 async function getProductDescription(url) {
     try {
         const { data } = await axios.get(url);
         const $ = cheerio.load(data);
 
-        let description = $("#viTabs_0_is").text().trim(); 
+        let description = $("#viTabs_0_is").text().trim();
         if (!description) description = "-";
 
         return description;
