@@ -31,10 +31,11 @@ async function scrapeEbay(query, maxPages = 2) {
             document.querySelectorAll(".s-item").forEach(item => {
                 let title = item.querySelector(".s-item__title")?.innerText || "-";
                 let price = item.querySelector(".s-item__price")?.innerText || "-";
+                let image = item.querySelector(".s-item__image")?.innerText || "-";
                 let link = item.querySelector(".s-item__link")?.href || "-";
 
                 if (title !== "-" && link !== "-") {
-                    items.push({ title, price, link });
+                    items.push({ title, price, link, image });
                 }
             });
             return items;
@@ -52,6 +53,7 @@ async function scrapeEbay(query, maxPages = 2) {
 
         allProducts.push(...products);
 
+        //scrape prevention
         hasNextPage = await page.evaluate(() => {
             let nextButton = document.querySelector(".pagination__next");
             return nextButton && !nextButton.classList.contains("pagination__next--disabled");
@@ -98,6 +100,7 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { "Content-Type": "application/json" });
             const cleanProducts = products.map(p => ({
                 Name: p.title,
+                image: p.image,
                 Price: p.price,
                 Description: p.description
             }));
